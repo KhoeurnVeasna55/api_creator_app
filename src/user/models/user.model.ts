@@ -1,6 +1,19 @@
 import { Schema, model, Document } from "mongoose";
 import bcrypt from "bcryptjs";
 
+interface IUserAddress {
+  _id: string;
+  fullName: string;
+  phone: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  state?: string;
+  postalCode: string;
+  country: string;
+  isDefault: boolean;
+}
+
 export interface IUser extends Document {
   name: string;
   email: string;
@@ -12,8 +25,27 @@ export interface IUser extends Document {
   role: "user" | "admin";
   googleId?: string;
   facebookId?: string;
+
+  // ✅ NEW
+  addresses: IUserAddress[];
+
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
+
+const AddressSchema = new Schema<IUserAddress>(
+  {
+    fullName: { type: String, required: true },
+    phone: { type: String, required: true },
+    line1: { type: String, required: true },
+    line2: { type: String },
+    city: { type: String, required: true },
+    state: { type: String },
+    postalCode: { type: String, required: true },
+    country: { type: String, required: true },
+    isDefault: { type: Boolean, default: false },
+  },
+  { _id: true }
+);
 
 const UserSchema = new Schema<IUser>(
   {
@@ -27,22 +59,29 @@ const UserSchema = new Schema<IUser>(
     role: { type: String, enum: ["user", "admin"], default: "user" },
     googleId: { type: String },
     facebookId: { type: String },
+
+    // ✅ NEW: addresses array
+    addresses: {
+      type: [AddressSchema],
+      default: [],
+    },
   },
   { timestamps: true }
 );
 
-// Hash password before saving
+// ===== Password Hashing =====
 UserSchema.pre<IUser>("save", async function (next) {
   if (!this.isModified("password")) return next();
-  this.password = await bcrypt.hash(this.password!, 10);
+  if (!this.password) return next();
+  this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
-// Compare passwords
+// ===== Compare Password Method =====
 UserSchema.methods.comparePassword = async function (
   candidatePassword: string
 ) {
-  return await bcrypt.compare(candidatePassword, this.password);
+  return await bcrypt.compare(candidatePassword, this.password!);
 };
 
 export const User = model<IUser>("User", UserSchema);

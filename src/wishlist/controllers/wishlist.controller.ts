@@ -10,35 +10,56 @@ type AuthRequest = Request & {
 
 export class WishlistController {
   // ===== GET my wishlist ====================================================
-  getMyWishlist = async (req: AuthRequest, res: Response) => {
-    try {
-      const userId = req.userId;
-      if (!userId) {
-        console.log("❌ getMyWishlist: no userId on req");
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      const wishlist = await Wishlist.findOne({ user: userId })
-        .populate({
-          path: "products",
-          select:
-            "title slug imageUrl currency totalStock isActive hasVariants lowestPrice highestPrice",
-        })
-        .exec();
-
-      return res.json(
-        wishlist || {
-          user: userId,
-          products: [],
-          createdAt: null,
-          updatedAt: null,
-        }
-      );
-    } catch (err) {
-      console.error("Wishlist getMyWishlist error:", err);
-      return res.status(500).json({ message: "Failed to fetch wishlist" });
+ getMyWishlist = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      console.log("❌ getMyWishlist: no userId on req");
+      return res.status(401).json({ message: "Unauthorized" });
     }
-  };
+
+    const wishlist = await Wishlist.findOne({ user: userId })
+      .populate({
+        path: "products",
+        select: [
+          "title",
+          "brand",
+          "slug",
+          "imageUrl",
+          "currency",
+          "totalStock",
+          "isActive",
+
+          // 👇 needed for virtuals to work
+          "price",
+          "salePrice",
+          "variants.price",
+          "variants.salePrice",
+
+          // virtuals (optional to list, but ok)
+          "discountPercent",
+          "hasVariants",
+          "lowestPrice",
+          "highestPrice",
+        ].join(" "),
+      })
+      .exec();
+
+    return res.json(
+      wishlist || {
+        _id: null,
+        user: userId,
+        products: [],
+        createdAt: null,
+        updatedAt: null,
+      }
+    );
+  } catch (err) {
+    console.error("Wishlist getMyWishlist error:", err);
+    return res.status(500).json({ message: "Failed to fetch wishlist" });
+  }
+};
+
 
   // ===== ADD to wishlist ====================================================
   addItem = async (req: AuthRequest, res: Response) => {
@@ -86,7 +107,7 @@ export class WishlistController {
         .populate({
           path: "products",
           select:
-            "title slug imageUrl currency totalStock isActive hasVariants lowestPrice highestPrice",
+            "title brand slug imageUrl currency totalStock isActive hasVariants lowestPrice highestPrice",
         })
         .exec();
 
@@ -131,7 +152,7 @@ export class WishlistController {
         .populate({
           path: "products",
           select:
-            "title slug imageUrl currency totalStock isActive hasVariants lowestPrice highestPrice",
+            "title brand slug imageUrl currency totalStock isActive hasVariants lowestPrice highestPrice",
         })
         .exec();
 

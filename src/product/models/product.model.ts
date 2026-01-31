@@ -33,7 +33,7 @@ export interface IVariant extends Document {
   stock: number;                         // required
   imageUrl?: string;
   barcode?: string;
-  isActive: boolean;   
+  isActive: boolean;
 
 }
 
@@ -216,5 +216,70 @@ ProductSchema.virtual("discountPercent").get(function (this: IProduct) {
   }
   return 0;
 });
+// ---- Price range for list / wishlist ----
+ProductSchema.virtual("hasVariants").get(function (this: IProduct) {
+  return Array.isArray(this.variants) && this.variants.length > 0;
+});
+
+ProductSchema.virtual("lowestPrice").get(function (this: IProduct) {
+  const hasVariants = Array.isArray(this.variants) && this.variants.length > 0;
+
+  // If product has variants → min(variant salePrice || price)
+  if (hasVariants) {
+    const prices: number[] = [];
+
+    this.variants.forEach((v: any) => {
+      if (v == null) return;
+      const p =
+        typeof v.salePrice === "number"
+          ? v.salePrice
+          : typeof v.price === "number"
+            ? v.price
+            : null;
+
+      if (p != null) {
+        prices.push(p);
+      }
+    });
+
+    if (!prices.length) return undefined;
+    return Math.min(...prices);
+  }
+
+  // Simple product → use effectivePrice
+  const eff = (this as any).effectivePrice as number | undefined;
+  return typeof eff === "number" ? eff : undefined;
+});
+
+ProductSchema.virtual("highestPrice").get(function (this: IProduct) {
+  const hasVariants = Array.isArray(this.variants) && this.variants.length > 0;
+
+  // If product has variants → max(variant salePrice || price)
+  if (hasVariants) {
+    const prices: number[] = [];
+
+    this.variants.forEach((v: any) => {
+      if (v == null) return;
+      const p =
+        typeof v.salePrice === "number"
+          ? v.salePrice
+          : typeof v.price === "number"
+            ? v.price
+            : null;
+
+      if (p != null) {
+        prices.push(p);
+      }
+    });
+
+    if (!prices.length) return undefined;
+    return Math.max(...prices);
+  }
+
+  // Simple product → also use effectivePrice
+  const eff = (this as any).effectivePrice as number | undefined;
+  return typeof eff === "number" ? eff : undefined;
+});
+
 
 export const Product = model<IProduct>("Product", ProductSchema);

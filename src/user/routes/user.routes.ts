@@ -2,7 +2,7 @@ import { Router } from "express";
 import { authenticate } from "../../middlewares/auth";
 import { UserController } from "../controllers/user.controller";
 const router = Router();
- const userController = new UserController();
+const userController = new UserController();
 /**
  * @swagger
  * tags:
@@ -130,8 +130,49 @@ router.get("/me", authenticate, (req, res, next) => {
  *             schema:
  *               $ref: '#/components/schemas/ApiError'
  */
-router.delete("/me", authenticate, (req,res,next) => {
-    userController.deleteAccount(req, res).catch(next);
+/**
+ * GET /api/users/me
+ */
+router.get("/me", authenticate, (req, res, next) => {
+  userController.getProfile(req, res).catch(next);
+});
+
+/**
+ * DELETE /api/users/me
+ */
+router.delete("/me", authenticate, (req, res, next) => {
+  userController.deleteAccount(req, res).catch(next);
+});
+
+// ========== ADDRESS ROUTES ==========
+// These become /api/users/address... because of app.use("/api/users", router)
+
+/**
+ * POST /api/users/address
+ */
+router.post("/address", authenticate, (req, res, next) => {
+  userController.addAddress(req as any, res).catch(next);
+});
+
+/**
+ * PUT /api/users/address/:id
+ */
+router.put("/address/:id", authenticate, (req, res, next) => {
+  userController.updateAddress(req as any, res).catch(next);
+});
+
+/**
+ * PUT /api/users/address/default/:id
+ */
+router.put("/address/default/:id", authenticate, (req, res, next) => {
+  userController.setDefaultAddress(req as any, res).catch(next);
+});
+
+router.delete("/address/:id", authenticate, (req, res, next) => {
+  userController.deleteAddress(req as any, res).catch(next);
 });
 
 export default router;
+
+
+

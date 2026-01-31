@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { User } from "../models/user.model";
+import { Types } from "mongoose";
 
 export class UserController {
     constructor() { }
@@ -25,6 +26,18 @@ export class UserController {
                 role: user.role,
                 googleId: !!user.googleId,
                 facebookId: !!user.facebookId,
+                addresses: (user.addresses || []).map((a: any) => ({
+                    _id: a._id,
+                    fullName: a.fullName,
+                    phone: a.phone,
+                    line1: a.line1,
+                    line2: a.line2,
+                    city: a.city,
+                    state: a.state,
+                    postalCode: a.postalCode,
+                    country: a.country,
+                    isDefault: a.isDefault,
+                })),
             });
         } catch (err) {
             console.error("getProfile error:", err);
@@ -79,4 +92,238 @@ export class UserController {
             return res.status(500).json({ message: "Failed to delete account" });
         }
     };
+    async addAddress(req: AuthRequest, res: Response) {
+        try {
+            const userId = req.userId;
+            if (!userId) {
+                return res.status(401).json({ message: "Unauthorized" });
+            }
+
+            const {
+                fullName,
+                phone,
+                line1,
+                line2,
+                city,
+                state,
+                postalCode,
+                country,
+                isDefault,
+            } = req.body as {
+                fullName?: string;
+                phone?: string;
+                line1?: string;
+                line2?: string;
+                city?: string;
+                state?: string;
+                postalCode?: string;
+                country?: string;
+                isDefault?: boolean;
+            };
+
+            // basic validation
+            if (
+                !fullName ||
+                !phone ||
+                !line1 ||
+                !city ||
+                !postalCode ||
+                !country
+            ) {
+                return res
+                    .status(400)
+                    .json({ message: "Missing required address fields" });
+            }
+
+            const user = await User.findById(userId);
+            if (!user) {
+                return res.status(404).json({ message: "User not found" });
+            }
+
+            // If new address is default, unset default on others
+            if (isDefault) {
+                user.addresses.forEach((addr: any) => {
+                    addr.isDefault = false;
+                });
+            }
+
+            // Push new address into embedded array
+            user.addresses.push({
+                _id: new Types.ObjectId(), // optional, mongoose can auto-generate
+                fullName,
+                phone,
+                line1,
+                line2,
+                city,
+                state,
+                postalCode,
+                country,
+                isDefault: !!isDefault,
+            });
+
+            await user.save();
+
+            return res.json({
+                message: "Address added",
+                addresses: user.addresses,
+            });
+        } catch (err: any) {
+            console.error("addAddress error:", err);
+            return res.status(500).json({
+                message: "Failed to add address",
+                error: err.message, // 👈 temporary, helps debug
+            });
+        }
+    }
+
+    // UPDATE address
+    async updateAddress(req: AuthRequest, res: Response) {
+        try {
+            const userId = req.userId;
+            const addressId = req.params.id;
+
+            if (!userId) {
+                return res.status(401).json({ message: "Unauthorized" });
+            }
+
+            const user = await User.findById(userId);
+            if (!user) {
+                return res.status(404).json({ message: "User not found" });
+            }
+
+            const index = user.addresses.findIndex(
+                (a: any) => String(a._id) === String(addressId)
+            );
+            if (index === -1) {
+                return res.status(404).json({ message: "Address not found" });
+            }
+
+            const {
+                fullName,
+                phone,
+                line1,
+                line2,
+                city,
+                state,
+                postalCode,
+                country,
+                isDefault,
+            } = req.body;
+
+            const addr: any = user.addresses[index];
+
+            addr.fullName = fullName ?? addr.fullName;
+            addr.phone = phone ?? addr.phone;
+            addr.line1 = line1 ?? addr.line1;
+            addr.line2 = line2 ?? addr.line2;
+            addr.city = city ?? addr.city;
+            addr.state = state ?? addr.state;
+            addr.postalCode = postalCode ?? addr.postalCode;
+            addr.country = country ?? addr.country;
+
+            if (typeof isDefault === "boolean") {
+                if (isDefault) {
+                    user.addresses.forEach((a: any) => (a.isDefault = false));
+                }
+                addr.isDefault = isDefault;
+            }
+
+            await user.save();
+            return res.json({ addresses: user.addresses });
+        } catch (err) {
+            console.error("updateAddress error:", err);
+            return res.status(500).json({ message: "Failed to update address" });
+        }
+    }
+
+    // SET default address
+    async setDefaultAddress(req: AuthRequest, res: Response) {
+        try {
+            const userId = req.userId;
+            const addressId = req.params.id;
+
+            if (!userId) {
+                return res.status(401).json({ message: "Unauthorized" });
+            }
+
+            const user = await User.findById(userId);
+            if (!user) {
+                return res.status(404).json({ message: "User not found" });
+            }
+
+            let found = false;
+            user.addresses.forEach((a: any) => {
+                if (String(a._id) === String(addressId)) {
+                    a.isDefault = true;
+                    found = true;
+                } else {
+                    a.isDefault = false;
+                }
+            });
+
+            if (!found) {
+                return res.status(404).json({ message: "Address not found" });
+            }
+
+            await user.save();
+            return res.json({ addresses: user.addresses });
+        } catch (err) {
+            console.error("setDefaultAddress error:", err);
+            return res.status(500).json({ message: "Failed to set default address" });
+        }
+    }
+
+    async deleteAddress(req: AuthRequest, res: Response) {
+        try {
+            const userId = req.userId;
+            const addressId = req.params.id;
+
+            if (!userId) {
+                return res.status(401).json({ message: "Unauthorized" });
+            }
+
+            const user = await User.findById(userId);
+            if (!user) {
+                return res.status(404).json({ message: "User not found" });
+            }
+
+            if (!user.addresses || user.addresses.length === 0) {
+                return res.status(400).json({ message: "No addresses to delete" });
+            }
+
+            // Find if the address exists and whether it's default
+            const addrIndex = user.addresses.findIndex(
+                (a: any) => a._id.toString() === addressId
+            );
+
+            if (addrIndex === -1) {
+                return res.status(404).json({ message: "Address not found" });
+            }
+
+            const wasDefault = user.addresses[addrIndex].isDefault;
+
+            // Remove the address
+            user.addresses.splice(addrIndex, 1);
+
+            // If deleted address was default → set first address as default
+            if (wasDefault && user.addresses.length > 0) {
+                user.addresses = user.addresses.map((a: any, i: number) => ({
+                    ...a.toObject?.() ?? a,
+                    isDefault: i === 0,
+                }));
+            }
+
+            await user.save();
+
+            return res.json({
+                message: "Address deleted",
+                addresses: user.addresses,
+            });
+        } catch (err) {
+            console.error("deleteAddress error:", err);
+            return res.status(500).json({
+                message: "Failed to delete address",
+            });
+        }
+    }
 }
