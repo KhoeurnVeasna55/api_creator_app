@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { User } from "../models/user.model";
 import { Types } from "mongoose";
-
+type AuthRequest = Request & { userId?: string };
 export class UserController {
     constructor() { }
     /**
@@ -27,7 +27,7 @@ export class UserController {
                 googleId: !!user.googleId,
                 facebookId: !!user.facebookId,
                 addresses: (user.addresses || []).map((a: any) => ({
-                    _id: a._id,
+                    _id: String(a._id),  
                     fullName: a.fullName,
                     phone: a.phone,
                     line1: a.line1,

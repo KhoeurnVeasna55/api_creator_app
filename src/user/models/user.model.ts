@@ -1,8 +1,8 @@
-import { Schema, model, Document } from "mongoose";
+import { Schema, model, Document ,Types  } from "mongoose";
 import bcrypt from "bcryptjs";
 
 interface IUserAddress {
-  _id: string;
+  _id: Types.ObjectId;
   fullName: string;
   phone: string;
   line1: string;

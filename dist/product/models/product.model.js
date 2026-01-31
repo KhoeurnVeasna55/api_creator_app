@@ -153,4 +153,58 @@ ProductSchema.virtual("discountPercent").get(function () {
     }
     return 0;
 });
+// ---- Price range for list / wishlist ----
+ProductSchema.virtual("hasVariants").get(function () {
+    return Array.isArray(this.variants) && this.variants.length > 0;
+});
+ProductSchema.virtual("lowestPrice").get(function () {
+    const hasVariants = Array.isArray(this.variants) && this.variants.length > 0;
+    // If product has variants → min(variant salePrice || price)
+    if (hasVariants) {
+        const prices = [];
+        this.variants.forEach((v) => {
+            if (v == null)
+                return;
+            const p = typeof v.salePrice === "number"
+                ? v.salePrice
+                : typeof v.price === "number"
+                    ? v.price
+                    : null;
+            if (p != null) {
+                prices.push(p);
+            }
+        });
+        if (!prices.length)
+            return undefined;
+        return Math.min(...prices);
+    }
+    // Simple product → use effectivePrice
+    const eff = this.effectivePrice;
+    return typeof eff === "number" ? eff : undefined;
+});
+ProductSchema.virtual("highestPrice").get(function () {
+    const hasVariants = Array.isArray(this.variants) && this.variants.length > 0;
+    // If product has variants → max(variant salePrice || price)
+    if (hasVariants) {
+        const prices = [];
+        this.variants.forEach((v) => {
+            if (v == null)
+                return;
+            const p = typeof v.salePrice === "number"
+                ? v.salePrice
+                : typeof v.price === "number"
+                    ? v.price
+                    : null;
+            if (p != null) {
+                prices.push(p);
+            }
+        });
+        if (!prices.length)
+            return undefined;
+        return Math.max(...prices);
+    }
+    // Simple product → also use effectivePrice
+    const eff = this.effectivePrice;
+    return typeof eff === "number" ? eff : undefined;
+});
 exports.Product = (0, mongoose_1.model)("Product", ProductSchema);

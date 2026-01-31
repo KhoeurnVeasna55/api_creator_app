@@ -130,7 +130,39 @@ router.get("/me", auth_1.authenticate, (req, res, next) => {
  *             schema:
  *               $ref: '#/components/schemas/ApiError'
  */
+/**
+ * GET /api/users/me
+ */
+router.get("/me", auth_1.authenticate, (req, res, next) => {
+    userController.getProfile(req, res).catch(next);
+});
+/**
+ * DELETE /api/users/me
+ */
 router.delete("/me", auth_1.authenticate, (req, res, next) => {
     userController.deleteAccount(req, res).catch(next);
+});
+// ========== ADDRESS ROUTES ==========
+// These become /api/users/address... because of app.use("/api/users", router)
+/**
+ * POST /api/users/address
+ */
+router.post("/address", auth_1.authenticate, (req, res, next) => {
+    userController.addAddress(req, res).catch(next);
+});
+/**
+ * PUT /api/users/address/:id
+ */
+router.put("/address/:id", auth_1.authenticate, (req, res, next) => {
+    userController.updateAddress(req, res).catch(next);
+});
+/**
+ * PUT /api/users/address/default/:id
+ */
+router.put("/address/default/:id", auth_1.authenticate, (req, res, next) => {
+    userController.setDefaultAddress(req, res).catch(next);
+});
+router.delete("/address/:id", auth_1.authenticate, (req, res, next) => {
+    userController.deleteAddress(req, res).catch(next);
 });
 exports.default = router;

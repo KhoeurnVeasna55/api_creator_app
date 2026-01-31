@@ -50,10 +50,29 @@ class WishlistController {
                 const wishlist = await wishlist_model_1.Wishlist.findOne({ user: userId })
                     .populate({
                     path: "products",
-                    select: "title slug imageUrl currency totalStock isActive hasVariants lowestPrice highestPrice",
+                    select: [
+                        "title",
+                        "brand",
+                        "slug",
+                        "imageUrl",
+                        "currency",
+                        "totalStock",
+                        "isActive",
+                        // 👇 needed for virtuals to work
+                        "price",
+                        "salePrice",
+                        "variants.price",
+                        "variants.salePrice",
+                        // virtuals (optional to list, but ok)
+                        "discountPercent",
+                        "hasVariants",
+                        "lowestPrice",
+                        "highestPrice",
+                    ].join(" "),
                 })
                     .exec();
                 return res.json(wishlist || {
+                    _id: null,
                     user: userId,
                     products: [],
                     createdAt: null,
@@ -97,7 +116,7 @@ class WishlistController {
                 const updated = await wishlist_model_1.Wishlist.findOne({ user: userId })
                     .populate({
                     path: "products",
-                    select: "title slug imageUrl currency totalStock isActive hasVariants lowestPrice highestPrice",
+                    select: "title brand slug imageUrl currency totalStock isActive hasVariants lowestPrice highestPrice",
                 })
                     .exec();
                 return res.status(200).json(updated);
@@ -130,7 +149,7 @@ class WishlistController {
                 const updated = await wishlist_model_1.Wishlist.findOne({ user: userId })
                     .populate({
                     path: "products",
-                    select: "title slug imageUrl currency totalStock isActive hasVariants lowestPrice highestPrice",
+                    select: "title brand slug imageUrl currency totalStock isActive hasVariants lowestPrice highestPrice",
                 })
                     .exec();
                 return res.json(updated);

@@ -6,6 +6,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.User = void 0;
 const mongoose_1 = require("mongoose");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
+const AddressSchema = new mongoose_1.Schema({
+    fullName: { type: String, required: true },
+    phone: { type: String, required: true },
+    line1: { type: String, required: true },
+    line2: { type: String },
+    city: { type: String, required: true },
+    state: { type: String },
+    postalCode: { type: String, required: true },
+    country: { type: String, required: true },
+    isDefault: { type: Boolean, default: false },
+}, { _id: true });
 const UserSchema = new mongoose_1.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
@@ -17,15 +28,22 @@ const UserSchema = new mongoose_1.Schema({
     role: { type: String, enum: ["user", "admin"], default: "user" },
     googleId: { type: String },
     facebookId: { type: String },
+    // ✅ NEW: addresses array
+    addresses: {
+        type: [AddressSchema],
+        default: [],
+    },
 }, { timestamps: true });
-// Hash password before saving
+// ===== Password Hashing =====
 UserSchema.pre("save", async function (next) {
     if (!this.isModified("password"))
+        return next();
+    if (!this.password)
         return next();
     this.password = await bcryptjs_1.default.hash(this.password, 10);
     next();
 });
-// Compare passwords
+// ===== Compare Password Method =====
 UserSchema.methods.comparePassword = async function (candidatePassword) {
     return await bcryptjs_1.default.compare(candidatePassword, this.password);
 };
